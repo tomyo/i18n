@@ -1,5 +1,0 @@
-
-[submodule "tests/test-utils-js"]
-	path = tests/test-utils-js
-	url = https://github.com/tomyo/test-utils-js
-	branch = v0
