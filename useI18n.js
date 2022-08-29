@@ -1,5 +1,5 @@
 
-const Defaultconfig = {
+const DefaultOptions = {
   filesPath: '/i18n', // Lookup => /i18n/{language}.json
   dataAttrName: 'data-i18n-key',
   localStorageKeyName: 'language', // i.e. 'es', 'en'
@@ -8,8 +8,8 @@ const Defaultconfig = {
   rootElement: document.documentElement,
 };
 
-export function useI18n(configOverride) {
-  const config = { ...Defaultconfig, ...configOverride }
+export function useI18n(options) {
+  const config = { ...DefaultOptions, ...options }
   config._rootElementDefaulLanguage = config.rootElement.lang?.split('-')[0] || 'default';
 
   const { getLocalLanguage, setLocalLanguage, cacheLocalLanguageInSession, translateUI } = setupWith(config);

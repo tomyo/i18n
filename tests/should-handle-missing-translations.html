@@ -9,7 +9,7 @@
   import { useI18n } from "../useI18n.js";
   import { assertEqual, runTests } from './test-utils-js/test-utils.js';
 
-  const config = {
+  const options = {
     filesPath: './',
     defaultLanguage: 'es', // Don't automatically translate content
     rootElement: document.documentElement,
@@ -20,14 +20,14 @@
 
   const tests = {
     shouldStartWithExpectedState() {
-      const [getLanguage, updateLanguage] = useI18n(config);
+      const [getLanguage, updateLanguage] = useI18n(options);
       const p = document.querySelector('p');
 
       assertEqual(getLanguage(), 'es');
       assertEqual(p.innerText, 'Hola Mundo!');
     },
     async shouldUseInitialLanguageWhenNoTranslationIsFound() {
-      const [getLanguage, updateLanguage] = useI18n(config);
+      const [getLanguage, updateLanguage] = useI18n(options);
       const html = document.querySelector('html');
 
       assertEqual(getLanguage(), 'es');
@@ -40,7 +40,7 @@
       await updateLanguage('ru');  // empty object
 
       assertEqual(getLanguage(), 'ru');
-      assertEqual(config.rootElement.lang, 'ru');
+      assertEqual(options.rootElement.lang, 'ru');
       assertEqual(document.querySelector('p').innerText, 'Hola Mundo!');
     }
   }
