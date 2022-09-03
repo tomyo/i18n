@@ -1,32 +1,49 @@
 <!DOCTYPE html>
 
 <html lang="es">
+<meta charset="UTF-8">
 
 <p data-i18n-key="hola">Hola Mundo!</p>
 
 
-<script type="module" async>
+<script type="module">
   import { useI18n } from "../useI18n.js";
-  import { assertEqual, runTests } from './test-utils-js/test-utils.js';
+  import { assertEqual, runTests, waitFor } from './test-utils-js/test-utils.js';
 
   const options = {
     filesPath: './',
-    defaultLanguage: 'es', // Don't automatically translate content
     rootElement: document.documentElement,
+    sessionCacheKeyPrefix: 'i18n',
   }
 
-  sessionStorage.clear();
-  localStorage.clear();
+  function reset() {
+    sessionStorage.clear();
+    localStorage.clear();
+    options.rootElement.lang = 'es';
+    options.rootElement.querySelector('p').innerHTML = 'Hola Mundo!';
+  }
 
   const tests = {
-    shouldStartWithExpectedState() {
+    shouldReturnRootElementLanguageAtStart() {
       const [getLanguage, updateLanguage] = useI18n(options);
       const p = document.querySelector('p');
 
       assertEqual(getLanguage(), 'es');
       assertEqual(p.innerText, 'Hola Mundo!');
     },
-    async shouldTranslateContent() {
+    shouldCacheInitialUILanguageInSessionStorage() {
+      const [getLanguage, updateLanguage] = useI18n(options);
+
+      const key = `${options.sessionCacheKeyPrefix}-${getLanguage()}`;
+      const sessionEntry = sessionStorage.getItem(key);
+      assertEqual(sessionEntry, JSON.stringify({ "hola": "Hola Mundo!" }));
+    },
+    shouldSyncInitialRootElementLangAttributeWithLocalStorageLanguage() {
+      const [getLanguage, updateLanguage] = useI18n(options);
+
+      assertEqual(options.rootElement.lang, getLanguage());
+    },
+    async shouldTranslateUIContent() {
       const [getLanguage, updateLanguage] = useI18n(options);
       assertEqual(getLanguage(), 'es');
 
@@ -35,18 +52,27 @@
       assertEqual(getLanguage(), 'en');
       assertEqual(document.querySelector('p').innerText, 'Hello World!');
     },
-    async shouldConvertElementLangAttributeValueToTranslatedLanguage() {
+    async shouldSyncRootElementLangAttributeWithLocalStorageLanguageAfterTranslating() {
       const [getLanguage, updateLanguage] = useI18n(options);
-      const html = document.querySelector('html');
 
+      assertEqual(getLanguage(), 'es');
+      assertEqual(options.rootElement.lang, 'es');
+
+      await updateLanguage('en');
 
       assertEqual(getLanguage(), 'en');
       assertEqual(options.rootElement.lang, 'en');
     }
   }
 
-  runTests(tests);
+  runTests(tests, { beforeEach: reset, afterEach: reset });
 
-  sessionStorage.clear();
-  localStorage.clear();
 </script>
+
+<style>
+  @media (prefers-color-scheme: dark) {
+    html {
+      color-scheme: dark;
+    }
+  }
+</style>

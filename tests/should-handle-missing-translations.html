@@ -1,52 +1,99 @@
 <!DOCTYPE html>
 
 <html lang="es">
+<meta charset="UTF-8">
 
 <p data-i18n-key="hola">Hola Mundo!</p>
 
 
-<script type="module" async>
+<script type="module">
   import { useI18n } from "../useI18n.js";
-  import { assertEqual, runTests } from './test-utils-js/test-utils.js';
+  import { assertEqual, assertTrue, runTests } from './test-utils-js/test-utils.js';
 
   const options = {
     filesPath: './',
-    defaultLanguage: 'es', // Don't automatically translate content
     rootElement: document.documentElement,
+    sessionCacheKeyPrefix: 'i18n',
   }
 
-  sessionStorage.clear();
-  localStorage.clear();
+  function getSessionCache(language) {
+    const key = `${options.sessionCacheKeyPrefix}-${language}`;
+    return JSON.parse(sessionStorage.getItem(key));
+  }
+
+  function reset() {
+    sessionStorage.clear();
+    localStorage.clear();
+    options.rootElement.lang = 'es';
+    options.rootElement.querySelector('p').innerHTML = 'Hola Mundo!';
+  }
 
   const tests = {
-    shouldStartWithExpectedState() {
+
+    async shouldMaintainLanguagesInCacheWhenTranslating() {
       const [getLanguage, updateLanguage] = useI18n(options);
-      const p = document.querySelector('p');
 
       assertEqual(getLanguage(), 'es');
-      assertEqual(p.innerText, 'Hola Mundo!');
-    },
-    async shouldUseInitialLanguageWhenNoTranslationIsFound() {
-      const [getLanguage, updateLanguage] = useI18n(options);
-      const html = document.querySelector('html');
-
-      assertEqual(getLanguage(), 'es');
+      assertTrue(getSessionCache('es'));
 
       await updateLanguage('en');
 
       assertEqual(getLanguage(), 'en');
-      assertEqual(document.querySelector('p').innerText, 'Hello World!');
+      assertTrue(getSessionCache('es'));
+      assertTrue(getSessionCache('en'));
+
+      await updateLanguage('ru');
+
+      assertEqual(getLanguage(), 'ru');
+      assertTrue(getSessionCache('es'));
+      assertTrue(getSessionCache('en'));
+      assertTrue(getSessionCache('ru'));
+
+    },
+    async shouldUseFallbackLanguageWhenNoTranslationIsFound() {
+      const [getLanguage, updateLanguage] = useI18n(options);
+      const p = document.querySelector('p');
+
+      assertEqual(getLanguage(), 'es');  // fallbackLanguage default is UI language 
+      assertEqual(p.innerText, 'Hola Mundo!');
+
+      await updateLanguage('en');
+
+      assertEqual(p.innerText, 'Hello World!');
+
+      await updateLanguage('ru');  // empty object
+
+      assertEqual(options.rootElement.lang, 'ru');
+      assertEqual(p.innerText, 'Hola Mundo!'); // Fallback
+    },
+    async shouldUseGivenFallbackLanguageWhenNoTranslationIsFound() {
+      const otherOptions = { ...options, fallbackLanguage: 'en' };
+      const [getLanguage, updateLanguage] = useI18n(otherOptions);
+      const p = document.querySelector('p');
+
+      assertEqual(getLanguage(), 'es');
+      assertEqual(p.innerText, 'Hola Mundo!');
+
+      await updateLanguage('en');
+
+      assertEqual(getLanguage(), 'en');
+      assertEqual(p.innerText, 'Hello World!');
 
       await updateLanguage('ru');  // empty object
 
       assertEqual(getLanguage(), 'ru');
       assertEqual(options.rootElement.lang, 'ru');
-      assertEqual(document.querySelector('p').innerText, 'Hola Mundo!');
+      assertEqual(p.innerText, 'Hello World!');
     }
   }
 
-  runTests(tests);
-
-  sessionStorage.clear();
-  localStorage.clear();
+  await runTests(tests, { beforeEach: reset, afterEach: reset });
 </script>
+
+<style>
+  @media (prefers-color-scheme: dark) {
+    html {
+      color-scheme: dark;
+    }
+  }
+</style>

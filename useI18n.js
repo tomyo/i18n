@@ -4,37 +4,29 @@ const DefaultOptions = {
   dataAttrName: 'data-i18n-key',
   localStorageKeyName: 'language', // i.e. 'es', 'en'
   sessionCacheKeyPrefix: 'i18n', // i18n-{language}
-  defaultLanguage: navigator.language?.split('-')[0],
   rootElement: document.documentElement,
+  missingTranslationText: 'MISSING_TRANSLATION',
+  fallbackLanguage: undefined, // Will be set to initial UI language if undefined
 };
 
 export function useI18n(options) {
   const config = { ...DefaultOptions, ...options }
-  config._rootElementDefaulLanguage = config.rootElement.lang?.split('-')[0] || 'default';
 
-  const { getLocalLanguage, setLocalLanguage, cacheLocalLanguageInSession, translateUI } = setupWith(config);
+  const { getLocalLanguage, cacheUITranslations,
+    getUILanguage, translateInto, setLocalLanguage } = setupWith(config);
 
-  cacheLocalLanguageInSession(config._rootElementDefaulLanguage);
+  cacheUITranslations();  // Prevent fetching initial UI language later on
 
-  if (!getLocalLanguage()) setLocalLanguage(config.defaultLanguage);
+  if (!config.fallbackLanguage) config.fallbackLanguage = getUILanguage(); // Initial UI language
 
-  if (config._rootElementDefaulLanguage !== getLocalLanguage()) translateUI();
-
-  async function translateInto(newLanguage) {
-    if (newLanguage === getLocalLanguage()) {
-      console.info(`Omitting translating same langauage "${newLanguage}".`);
-      return;
-    }
-
-    setLocalLanguage(newLanguage);
-    return await translateUI();
-  }
+  if (!getLocalLanguage()) setLocalLanguage(getUILanguage());  // sync local storage language with UI language
 
   return [getLocalLanguage, translateInto];
 }
 
 
 function setupWith(config) {
+  const getUILanguage = () => config.rootElement.lang?.split('-')[0] || 'default';
   const getLocalLanguage = () => localStorage.getItem(config.localStorageKeyName);
   const setLocalLanguage = (lang) => localStorage.setItem(config.localStorageKeyName, lang);
 
@@ -46,47 +38,60 @@ function setupWith(config) {
     sessionStorage.setItem(`${config.sessionCacheKeyPrefix}-${language}`, JSON.stringify(data));
   }
 
-  function cacheLocalLanguageInSession(language) {
-    let data = {};
+  function cacheUITranslations() {
+    const dictionary = {};
     for (const element of config.rootElement.querySelectorAll(`[${config.dataAttrName}]`)) {
-      data[element.getAttribute(config.dataAttrName)] = element.innerText.trim();
+      dictionary[element.getAttribute(config.dataAttrName)] = element.innerText.trim();
     }
-    setSessionCache(language, data);
+    setSessionCache(getUILanguage(), dictionary);
   }
 
-  async function translateUI() {
-    const language = getLocalLanguage();
-    let data = getSessionCache(language);
-    const fallbackTranslations = getSessionCache(config._rootElementDefaulLanguage);
+  async function getTranslations(language) {
+    let dictionary = getSessionCache(language);
 
-    console.info(`Translating ui into "${language}".`)
+    if (!dictionary) {
+      const baseUrl = new URL(config.filesPath, document.location);
+      const url = new URL(`${language}.json`, baseUrl);
+      const response = await fetch(url);
+      dictionary = await response.json();
 
-    if (data) {
-      console.info(`Using cached language for "${language}".`);
-    } else {
-      const url = `${config.filesPath}/${language}.json`;
-      data = await (await fetch(url)).json();
-      setSessionCache(language, data);
+      setSessionCache(language, dictionary);
     }
 
+    return dictionary;
+  }
+
+  async function getTranslation(language, key) {
+    let translation = (await getTranslations(language))[key];
+    if (translation) return translation;
+    translation = (await getTranslations(config.fallbackLanguage))[key];
+    if (translation) return translation;
+
+    return config.missingTranslationText;
+  }
+
+  async function translateInto(language) {
+    if (language === getLocalLanguage()) {
+      console.info(`Omitting translating into current langauge "${language}".`);
+      return;
+    }
+
+    // Find and translate all DOM elements below config.rootElement
     for (const element of config.rootElement.querySelectorAll(`[${config.dataAttrName}]`)) {
       const key = element.getAttribute(config.dataAttrName);
-      const translation = data[key];
-      if (translation) {
-        element.innerText = translation;
-      } else {
-        element.innerText = fallbackTranslations[key];
-      }
+      element.innerText = await getTranslation(language, key);
     }
 
+    // Keep UI and LocalStorage in sync
     config.rootElement.setAttribute('lang', language);
-
+    setLocalLanguage(language);
   }
 
   return {
+    getUILanguage,
     getLocalLanguage,
+    cacheUITranslations,
+    translateInto,
     setLocalLanguage,
-    cacheLocalLanguageInSession,
-    translateUI,
   }
 }

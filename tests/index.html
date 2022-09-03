@@ -5,69 +5,56 @@
 
 <h2>Running useI18n tests...</h2>
 
-<iframe src="" title="Testing sandbox"></iframe>
+<iframe allow-scripts allow-same-origin></iframe>
 
-<details>
+<details open>
   <summary style="cursor:default">Summary (+ info)</summary>
   <ul></ul>
 </details>
 
-<script type="module">
+<script type="module" defer>
+  import { useIFrameAsTestRunner } from './test-utils-js/use-test-runner.js';
+
   const testsPaths = [
     'should-translate',
     'should-handle-missing-translations',
   ].map((name) => `${name}.html`);
 
   const iframe = document.querySelector('iframe');
-  const finishedTestBroadcast = new BroadcastChannel('tests');
-  let currentPath, timeoutID;
+  const startTests = useIFrameAsTestRunner(iframe, testsPaths);
 
-  finishedTestBroadcast.onmessage = (event) => {
-    // Tests finished running for `currentPath`
-    clearTimeout(timeoutID);
+  function onTestDone(data) {
+    appendTestResultToSummary(data);
+  }
 
-    appendReportToSummary(currentPath, event.data)
+  function appendTestResultToSummary(data) {
+    const summaryList = document.querySelector('details ul');
+    const li = document.createElement('li');
+    const itemText = `${data.status === 'passed' ? '✔' : '✘'} ${data.name}`;
 
-    if (testsPaths.length) {
-      runNextTest()
+    function getFileNameFromPath(path) {
+      const folderRegExp = new RegExp('/.*/');
+      return path.replace(folderRegExp, ''); // /foo/bar.html => bar.html
+    }
+
+    const fileName = getFileNameFromPath(data.location.pathname);
+    const ul = document.querySelector(`ul[data-file-name="${fileName}"]`);
+    if (ul) {
+      li.innerText = itemText;
+      ul.appendChild(li);
     } else {
-      document.querySelector('h2').innerText += '  ✔ [Done]'
-      console.info('[Done] All tests finished succesfully!');
+      li.innerHTML = `
+        <a href="${data.location.href}">${fileName}</a>
+        <ul data-file-name="${fileName}">
+          <li>${itemText}</li>
+        </ul>
+      `;
+      summaryList.appendChild(li);
     }
   }
 
-  function runNextTest() {
-    currentPath = testsPaths.shift();
-    console.info(`Testing ${currentPath} ...`)
-    iframe.contentWindow.location.replace(currentPath); // keep history clean
-    timeoutID = setupTimeOutError();
-  }
+  startTests(onTestDone);
 
-  function setupTimeOutError() {
-    iframe.style.backgroundColor = "inherited";
-    return setTimeout(() => {
-      iframe.style.backgroundColor = 'lightcoral';
-      document.querySelector('h2').innerText += '  X [Failed]'
-      console.warn(`Test failed: ${currentPath}`);
-    }, 3000);
-  }
-
-  function appendReportToSummary(testId, data) {
-    const summaryList = document.querySelector('details ul');
-    const li = document.createElement('li');
-
-    li.innerHTML = `
-          ${testId}
-          <ul>
-              ${data.map((testResult) => `<li>${testResult}</li>`).join('\n')}
-          </ul>        
-      `
-    summaryList.appendChild(li);
-  }
-
-  console.info("Starting tests ...");
-
-  runNextTest();
 </script>
 
 <style>
@@ -79,5 +66,15 @@
 
   iframe {
     flex: 1;
+  }
+
+  iframe:not([title]) {
+    opacity: 0;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    html {
+      color-scheme: dark;
+    }
   }
 </style>
