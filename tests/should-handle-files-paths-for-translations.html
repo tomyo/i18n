@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<meta charset="UTF-8">
+
+<p data-i18n-key="hola">Hola Mundo!</p>
+
+
+<script type="module">
+  import { useI18n } from "../useI18n.js";
+  import { assertEqual, assertTrue, runTests, mockOnce } from './test-utils-js/test-utils.js';
+
+  const options = {
+    rootElement: document.documentElement,
+  }
+
+
+  function reset() {
+    sessionStorage.clear();
+    localStorage.clear();
+  }
+
+  function assertFetchedUrl(...args) {
+    console.log(...args);
+  }
+
+  const tests = {
+
+    async shouldHandleAbsoluteFilesPath() {
+      const [getLanguage, updateLanguage] = useI18n({ filesPath: '/absolute/' });
+
+      assertEqual(getLanguage(), 'es');
+
+      let pathName;
+      mockOnce(window, 'fetch', (...args) => {
+        pathName = typeof (args[0]) === 'object' ? args[0].pathname : args[0];
+        return; // let it run as normal
+      });
+
+      try {
+        await updateLanguage('en');
+        // fetch('caca');
+      } catch { } finally {
+        assertEqual(pathName, '/absolute/en.json');
+      }
+    },
+    async shouldHandleRelativeFilesPath() {
+      const [getLanguage, updateLanguage] = useI18n({ filesPath: 'relative/' });
+
+      assertEqual(getLanguage(), 'es');
+
+      let pathName;
+      mockOnce(window, 'fetch', (...args) => {
+        pathName = typeof (args[0]) === 'object' ? args[0].pathname : args[0];
+        return; // let it run as normal
+      });
+
+      try {
+        await updateLanguage('en');
+        // fetch('caca');
+      } catch { } finally {
+        const currentLocation = new URL('./', location);
+        const expectedLocation = new URL('relative/en.json', currentLocation);
+
+        assertEqual(pathName, expectedLocation.pathname);
+      }
+    },
+    async shouldThrowWhenNoForwardSlashSuffixOnFilesPath() {
+      let error;
+      try {
+        useI18n({ filesPath: 'invalid' });
+
+      } catch (e) { error = e } finally {
+        assertTrue(error?.message?.includes('must end with forward slash'));
+      }
+    }
+  }
+
+  await runTests(tests, { beforeEach: reset, afterEach: reset });
+</script>
+
+<style>
+  @media (prefers-color-scheme: dark) {
+    html {
+      color-scheme: dark;
+    }
+  }
+</style>
