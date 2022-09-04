@@ -1,6 +1,6 @@
 
-const DefaultOptions = {
-  filesPath: '/i18n', // Lookup => /i18n/{language}.json
+const useI18nDefaultProps = {
+  filesPath: 'i18n/', // Lookup => i18n/{language}.json (relative)
   dataAttrName: 'data-i18n-key',
   localStorageKeyName: 'language', // i.e. 'es', 'en'
   sessionCacheKeyPrefix: 'i18n', // i18n-{language}
@@ -9,8 +9,8 @@ const DefaultOptions = {
   fallbackLanguage: undefined, // Will be set to initial UI language if undefined
 };
 
-export function useI18n(options) {
-  const config = { ...DefaultOptions, ...options }
+export function useI18n(props) {
+  const config = { ...useI18nDefaultProps, ...props }
 
   const { getLocalLanguage, cacheUITranslations,
     getUILanguage, translateInto, setLocalLanguage } = setupWith(config);
@@ -26,6 +26,8 @@ export function useI18n(options) {
 
 
 function setupWith(config) {
+  checkConfig();
+
   const getUILanguage = () => config.rootElement.lang?.split('-')[0] || 'default';
   const getLocalLanguage = () => localStorage.getItem(config.localStorageKeyName);
   const setLocalLanguage = (lang) => localStorage.setItem(config.localStorageKeyName, lang);
@@ -85,6 +87,13 @@ function setupWith(config) {
     // Keep UI and LocalStorage in sync
     config.rootElement.setAttribute('lang', language);
     setLocalLanguage(language);
+  }
+
+  // CHECKS
+  function checkConfig() {
+    if (!config.filesPath.endsWith('/')) {
+      throw new Error('`filesPath` option must end with a forward slash /');
+    }
   }
 
   return {
