@@ -2,18 +2,20 @@
 
 <html lang="es">
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-<p data-i18n-key="hola">Hola Mundo!</p>
+<p data-some-key="hola">Hola Mundo!</p>
 
 
 <script type="module">
-  import { useI18n } from "../useI18n.js";
-  import { assertEqual, runTests, waitFor } from './test-utils-js/test-utils.js';
+  import { useL10n } from "../use-l10n.js";
+  import { assertEqual, runTests, waitFor } from './test-utils-js/index.js';
 
   const options = {
     filesPath: './',
     rootElement: document.documentElement,
-    sessionCacheKeyPrefix: 'i18n',
+    sessionCacheKeyPrefix: 'some',
+    dataAttrName: 'data-some-key'
   }
 
   function reset() {
@@ -25,26 +27,26 @@
 
   const tests = {
     shouldReturnRootElementLanguageAtStart() {
-      const [getLanguage, updateLanguage] = useI18n(options);
+      const [getLanguage, updateLanguage] = useL10n(options);
       const p = document.querySelector('p');
 
       assertEqual(getLanguage(), 'es');
       assertEqual(p.innerText, 'Hola Mundo!');
     },
     shouldCacheInitialUILanguageInSessionStorage() {
-      const [getLanguage, updateLanguage] = useI18n(options);
+      const [getLanguage, updateLanguage] = useL10n(options);
 
       const key = `${options.sessionCacheKeyPrefix}-${getLanguage()}`;
       const sessionEntry = sessionStorage.getItem(key);
-      assertEqual(sessionEntry, JSON.stringify({ "hola": "Hola Mundo!" }));
+      assertEqual(sessionEntry, JSON.stringify({ "hola": "Hola Mundo!" }), sessionStorage);
     },
     shouldSyncInitialRootElementLangAttributeWithLocalStorageLanguage() {
-      const [getLanguage, updateLanguage] = useI18n(options);
+      const [getLanguage, updateLanguage] = useL10n(options);
 
       assertEqual(options.rootElement.lang, getLanguage());
     },
     async shouldTranslateUIContent() {
-      const [getLanguage, updateLanguage] = useI18n(options);
+      const [getLanguage, updateLanguage] = useL10n(options);
       assertEqual(getLanguage(), 'es');
 
       await updateLanguage('en');
@@ -53,7 +55,7 @@
       assertEqual(document.querySelector('p').innerText, 'Hello World!');
     },
     async shouldSyncRootElementLangAttributeWithLocalStorageLanguageAfterTranslating() {
-      const [getLanguage, updateLanguage] = useI18n(options);
+      const [getLanguage, updateLanguage] = useL10n(options);
 
       assertEqual(getLanguage(), 'es');
       assertEqual(options.rootElement.lang, 'es');
