@@ -1,5 +1,3 @@
-const getUIElementLanguage = (element) => element.lang?.split('-')[0] || 'default';
-
 /**
  * 
  * @param {Config} config 
@@ -11,21 +9,20 @@ const getUIElementLanguage = (element) => element.lang?.split('-')[0] || 'defaul
  * @param {String} sessionCacheKeyPrefix = 'l10n', // l10n-{language}
  * @param {String} rootElement = document.documentElement,
  * @param {String} missingTranslationText = 'MISSING_TRANSLATION',
- * @param {String} fallbackLanguage = rootElement.lang
- * @returns 
+ * @param {String} defaultLanguage = navigator.language.split('-')[0]
+ * @returns [getUILanguage(), getPreferredLanguage(), translateInto()]
  */
 export function useL10n(config = {}) {
 
-  const { getLocalLanguage, cacheUITranslations,
-    getUILanguage, translateInto, setLocalLanguage } = setupWith(config);
+  const { getPreferredLanguage, setPrefferedLanguage,
+    cacheUITranslations, getUILanguage, translateInto } = setupWith(config);
 
   cacheUITranslations();  // Prevent fetching initial UI language later on
 
-  if (!getLocalLanguage()) setLocalLanguage(getUILanguage());  // sync local storage language with UI language
+  if (!getPreferredLanguage()) setPrefferedLanguage(navigator.language?.split('-')[0]);
 
-  return [getLocalLanguage, translateInto];
+  return [getUILanguage, getPreferredLanguage, translateInto];
 }
-
 
 function setupWith({
   filesPath = './l10n/', // Lookup => ./l10n/{language}.json (relative)
@@ -34,13 +31,14 @@ function setupWith({
   sessionCacheKeyPrefix = 'l10n', // l10n-{language}
   rootElement = document.documentElement,
   missingTranslationText = 'MISSING_TRANSLATION',
-  fallbackLanguage = getUIElementLanguage(rootElement),
+  defaultLanguage = navigator.language?.split('-')[0],
 } = {}) {
   validateConfig();
 
-  const getUILanguage = () => getUIElementLanguage(rootElement);
-  const getLocalLanguage = () => localStorage.getItem(localStorageKeyName);
-  const setLocalLanguage = (lang) => localStorage.setItem(localStorageKeyName, lang);
+  const getUILanguage = () => rootElement.getAttribute('lang')?.split('-')[0];
+  const setUILanguage = (language) => rootElement.setAttribute('lang', language);
+  const getPreferredLanguage = () => localStorage.getItem(localStorageKeyName);
+  const setPrefferedLanguage = (lang) => localStorage.setItem(localStorageKeyName, lang);
 
   function getSessionCache(language) {
     return JSON.parse(sessionStorage.getItem(`${sessionCacheKeyPrefix}-${language}`));
@@ -76,14 +74,14 @@ function setupWith({
   async function getTranslation(language, key) {
     let translation = (await getTranslations(language))[key];
     if (translation) return translation;
-    translation = (await getTranslations(fallbackLanguage))[key];
+    translation = (await getTranslations(defaultLanguage))[key];
     if (translation) return translation;
 
     return missingTranslationText;
   }
 
   async function translateInto(language) {
-    if (language === getLocalLanguage()) {
+    if (language === getPreferredLanguage() == getUILanguage()) {
       console.info(`Omitting translating into current langauge "${language}".`);
       return;
     }
@@ -95,8 +93,8 @@ function setupWith({
     }
 
     // Keep UI and LocalStorage in sync
-    rootElement.setAttribute('lang', language);
-    setLocalLanguage(language);
+    setUILanguage(language);
+    setPrefferedLanguage(language);
   }
 
   // CHECKS
@@ -108,9 +106,10 @@ function setupWith({
 
   return {
     getUILanguage,
-    getLocalLanguage,
-    cacheUITranslations,
+    setUILanguage,
+    getPreferredLanguage,
+    setPrefferedLanguage,
     translateInto,
-    setLocalLanguage,
+    cacheUITranslations,
   }
 }

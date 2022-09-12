@@ -16,6 +16,7 @@
     filesPath: './',
     rootElement: document.documentElement,
     sessionCacheKeyPrefix: 'l10n',
+    missingTranslationText: 'MISSING_TRANSLATION',
   }
 
   function getSessionCache(language) {
@@ -33,30 +34,30 @@
   const tests = {
 
     async shouldMaintainLanguagesInCacheWhenTranslating() {
-      const [getLanguage, updateLanguage] = useL10n(options);
+      const [getUILanguage, getPreferredLanguage, updateLanguage] = useL10n(options);
 
-      assertEqual(getLanguage(), 'es');
+      assertEqual(getUILanguage(), 'es');
       assertTrue(getSessionCache('es'));
 
       await updateLanguage('en');
 
-      assertEqual(getLanguage(), 'en');
+      assertEqual(getUILanguage(), 'en');
       assertTrue(getSessionCache('es'));
       assertTrue(getSessionCache('en'));
 
       await updateLanguage('ru');
 
-      assertEqual(getLanguage(), 'ru');
+      assertEqual(getUILanguage(), 'ru');
       assertTrue(getSessionCache('es'));
       assertTrue(getSessionCache('en'));
       assertTrue(getSessionCache('ru'));
 
     },
     async shouldUseFallbackLanguageWhenNoTranslationIsFound() {
-      const [getLanguage, updateLanguage] = useL10n(options);
+      const [getUILanguage, getPreferredLanguage, updateLanguage] = useL10n(options);
       const p = document.querySelector('p');
 
-      assertEqual(getLanguage(), 'es');  // fallbackLanguage default is UI language 
+      assertEqual(getUILanguage(), 'es');  // fallbackLanguage default is UI language 
       assertEqual(p.innerText, 'Hola Mundo!');
 
       await updateLanguage('en');
@@ -65,25 +66,32 @@
 
       await updateLanguage('ru');  // empty object
 
+      const defaultFallbackLanguage = navigator.language.split('-')[0];
+      let expectedText;
+
+      if (defaultFallbackLanguage == 'en') expectedText = 'Hello World!';
+      if (defaultFallbackLanguage == 'es') expectedText = 'Hola Mundo!';
+      if (!expectedText) expectedText = 'MISSING_TRANSLATION';
+
       assertEqual(options.rootElement.lang, 'ru');
-      assertEqual(p.innerText, 'Hola Mundo!'); // Fallback
+      assertEqual(p.innerText, expectedText);
     },
     async shouldUseGivenFallbackLanguageWhenNoTranslationIsFound() {
       const otherOptions = { ...options, fallbackLanguage: 'en' };
-      const [getLanguage, updateLanguage] = useL10n(otherOptions);
+      const [getUILanguage, _, updateLanguage] = useL10n(otherOptions);
       const p = document.querySelector('p');
 
-      assertEqual(getLanguage(), 'es');
+      assertEqual(getUILanguage(), 'es');
       assertEqual(p.innerText, 'Hola Mundo!');
 
       await updateLanguage('en');
 
-      assertEqual(getLanguage(), 'en');
+      assertEqual(getUILanguage(), 'en');
       assertEqual(p.innerText, 'Hello World!');
 
       await updateLanguage('ru');  // empty object
 
-      assertEqual(getLanguage(), 'ru');
+      assertEqual(getUILanguage(), 'ru');
       assertEqual(options.rootElement.lang, 'ru');
       assertEqual(p.innerText, 'Hello World!');
     }

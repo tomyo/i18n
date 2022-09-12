@@ -21,10 +21,10 @@
 
   const tests = {
     async shouldHandleAbsoluteFilesPath() {
-      const [getLanguage, updateLanguage] = useL10n({ filesPath: '/absolute/' });
+      const [getUILanguage, getPreferredLanguage, updateLanguage] = useL10n({ filesPath: '/absolute/' });
       const [getArgs, getResult, getError] = useSpyOnce(fetch);
 
-      assertEqual(getLanguage(), 'es');
+      assertEqual(getUILanguage(), 'es');
 
       try {
         await updateLanguage('en');
@@ -35,9 +35,9 @@
       }
     },
     async shouldHandleRelativeFilesPath() {
-      const [getLanguage, updateLanguage] = useL10n({ filesPath: 'relative/' });
+      const [getUILanguage, getPreferredLanguage, updateLanguage] = useL10n({ filesPath: 'relative/' });
 
-      assertEqual(getLanguage(), 'es');
+      assertEqual(getUILanguage(), 'es');
       const [getArgs, getResult, getError] = useSpyOnce(fetch);
 
       try {
