@@ -3,23 +3,23 @@
  * @param {Config} config 
  * 
  * @typedef {Object} Config
- * @param {String} filesPath = 'l10n/'
- * @param {String} dataAttrName = 'data-l10n-key',
- * @param {String} localStorageKeyName = 'language', // i.e. 'es', 'en'
- * @param {String} sessionCacheKeyPrefix = 'l10n', // l10n-{language}
- * @param {String} rootElement = document.documentElement,
+ * @param {String} filesPath = './l10n/', // => fetch('./l10n/{language}.json')
+ * @param {String} dataAttrName = 'data-l10n-key', // i.e. <p data-l10n-key="...">
+ * @param {String} localStorageKeyName = 'language', // i.e. {language: 'xx'}
+ * @param {String} sessionCacheKeyPrefix = 'l10n', // i.e. {l10n-es: JSON.encode(dictionary)}
+ * @param {String} rootElement = document.documentElement, // <html>
  * @param {String} missingTranslationText = 'MISSING_TRANSLATION',
- * @param {String} defaultLanguage = navigator.language.split('-')[0]
+ * @param {String} defaultLanguage = navigator.language?.split('-')[0],
  * @returns [getUILanguage(), getPreferredLanguage(), translateInto()]
  */
-export function useL10n(config = {}) {
+export function useL10n({ fallbackLanguage = navigator.language?.split('-')[0], ...config }) {
 
   const { getPreferredLanguage, setPrefferedLanguage,
-    cacheUITranslations, getUILanguage, translateInto } = setupWith(config);
+    cacheUITranslations, getUILanguage, translateInto } = setupWith({ fallbackLanguage, ...config });
 
-  cacheUITranslations();  // Prevent fetching initial UI language later on
+  cacheUITranslations();  // Prevents fetching initial UI language later on
 
-  if (!getPreferredLanguage()) setPrefferedLanguage(navigator.language?.split('-')[0]);
+  if (!getPreferredLanguage()) setPrefferedLanguage(fallbackLanguage);
 
   return [getUILanguage, getPreferredLanguage, translateInto];
 }
@@ -31,7 +31,7 @@ function setupWith({
   sessionCacheKeyPrefix = 'l10n', // l10n-{language}
   rootElement = document.documentElement,
   missingTranslationText = 'MISSING_TRANSLATION',
-  defaultLanguage = navigator.language?.split('-')[0],
+  fallbackLanguage = navigator.language?.split('-')[0],
 } = {}) {
   validateConfig();
 
@@ -74,7 +74,7 @@ function setupWith({
   async function getTranslation(language, key) {
     let translation = (await getTranslations(language))[key];
     if (translation) return translation;
-    translation = (await getTranslations(defaultLanguage))[key];
+    translation = (await getTranslations(fallbackLanguage))[key];
     if (translation) return translation;
 
     return missingTranslationText;
