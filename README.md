@@ -47,9 +47,18 @@
 ```
 
 
+### Known issues
+
+  * When saving presented HTML content as default language in session storage, 
+    [as per specs](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/innerText#value),
+    calling `innerText` on not-visible nodes will behave as calling `textContent`. 
+    This can produce unwanted line breaks in the stored json, affecting the default language when switching to it again during a session.
+    As a work around, if using the HTML as source of truth for the default language, make sure the markup line breaks match the visually intended ones.
+
 ### Changelog:
 
   * v1.x  (branch v1)
     - [x] Handle simple text translations based on language.
     - [ ] Handle localization for dates, punctuation, currency, etc.
     - [ ] Handle plurals / dinamic content.
+
